@@ -16,6 +16,8 @@ for x, y, w, h in faces:
 print(type(faces))
 print(faces)
 
+resized = cv2.resize(img(int(img.shape[1]/3), int(img.shape[0]/3)))
+
 cv2.imshow("Gray", img)
 cv2.waitKey(0)
 cv2.destroyAllWindows()
