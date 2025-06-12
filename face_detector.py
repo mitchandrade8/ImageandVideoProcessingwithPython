@@ -2,11 +2,11 @@ import cv2
 
 face_cascade = cv2.CascadeClassifier("haarcascade_frontalface_default.xml")
 
-img = cv2.imread("photo.jpg")
+img = cv2.imread("news.jpg")
 gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
 faces = face_cascade.detectMultiScale(gray_img, 
-                                      scaleFactor = 1.05, # went with 1.05 for high accuracy
+                                      scaleFactor = 1.1, # went with 1.05 for high accuracy
                                       minNeighbors = 5
                                       ) 
 
@@ -16,7 +16,7 @@ for x, y, w, h in faces:
 print(type(faces))
 print(faces)
 
-resized = cv2.resize(img(int(img.shape[1]/3), int(img.shape[0]/3)))
+resized = cv2.resize(img, (int(img.shape[1]/3), int(img.shape[0]/3)))
 
 cv2.imshow("Gray", img)
 cv2.waitKey(0)
