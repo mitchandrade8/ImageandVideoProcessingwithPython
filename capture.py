@@ -12,11 +12,11 @@ while True:
     time.sleep(3)
     cv2.imshow("Capturing", frame)
 
-    key = cv2.waitKey(1000)
+    key = cv2.waitKey(10)
     
     if key == ord('q'):
         break
-    
+
 video.release()
 
 cv2.destroyAllWindows
