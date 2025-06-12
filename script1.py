@@ -1,4 +1,5 @@
 import cv2
+import glob
 
 img = cv2.imread("galaxy.jpg", 1)
 
