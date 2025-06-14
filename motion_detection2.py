@@ -2,24 +2,24 @@ import cv2
 import time
 from datetime import datetime
 import numpy as np
-import pandas as pd # Import Pandas for data handling
+import pandas as pd
 
 # --- INITIALIZATION ---
 first_frame = None
-status_list = [None, None] # Initialize with two None items to prevent index errors
-times = [] # A list to store the start times of motion
-df = pd.DataFrame(columns=["Start", "End"]) # Create an empty DataFrame
+status_list = [None, None]
+times = []
+df = pd.DataFrame(columns=["Start", "End"])
 
 video = cv2.VideoCapture(0)
 
 print("Letting camera warm up...")
-time.sleep(2) # A simple sleep is often enough for warmup
+time.sleep(2)
 print("Camera ready.")
 
 # --- MAIN LOOP ---
 while True:
     check, frame = video.read()
-    status = 0 # Status is 0 for no motion, 1 for motion
+    status = 0
     if not check:
         break
 
@@ -34,41 +34,52 @@ while True:
     # --- MOTION CALCULATION ---
     delta_frame = cv2.absdiff(first_frame, gray)
     thresh_frame = cv2.threshold(delta_frame, 30, 255, cv2.THRESH_BINARY)[1]
-    # Dilate the thresholded image to fill in holes
     thresh_frame = cv2.dilate(thresh_frame, None, iterations=2)
 
-    # --- OBJECT DETECTION & LOGGING ---
-    # Find contours of moving objects
+    # --- OBJECT DETECTION & UNIFIED BOUNDING BOX ---
     (cnts, _) = cv2.findContours(thresh_frame.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
+    # Initialize variables for the combined bounding box of all detected motion
+    min_x, min_y = frame.shape[1], frame.shape[0]
+    max_x, max_y = 0, 0
+    motion_detected_in_frame = False
+
     for contour in cnts:
-        # If the contour is too small, ignore it (noise)
         if cv2.contourArea(contour) < 10000:
             continue
         
-        # A significant contour was found, so motion is detected
-        status = 1
+        # If we are here, it means a valid contour was found
+        motion_detected_in_frame = True
 
-        # Draw a green bounding box around the moving object on the original color frame
+        # Get the bounding box for the current contour
         (x, y, w, h) = cv2.boundingRect(contour)
-        cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 3)
+        
+        # Update the overall min/max coordinates to encompass this new contour
+        min_x = min(min_x, x)
+        min_y = min(min_y, y)
+        max_x = max(max_x, x + w)
+        max_y = max(max_y, y + h)
+        
+        # NOTE: We have REMOVED the cv2.rectangle() call from inside the loop
+
+    # After checking all contours, draw ONE unified rectangle if motion was detected
+    if motion_detected_in_frame:
+        status = 1
+        cv2.rectangle(frame, (min_x, min_y), (max_x, max_y), (0, 255, 0), 3)
+
 
     # --- RECORD MOTION START & END TIMES ---
     status_list.append(status)
-    
-    # We only care about the last two status entries
     status_list = status_list[-2:]
 
-    # Record the timestamp when motion STARTS
     if status_list[-1] == 1 and status_list[-2] == 0:
         times.append(datetime.now())
     
-    # Record the timestamp when motion ENDS
     if status_list[-1] == 0 and status_list[-2] == 1:
         times.append(datetime.now())
 
-
     # --- DASHBOARD PREPARATION & DISPLAY ---
+    # (This section remains the same)
     gray_bgr = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
     delta_bgr = cv2.cvtColor(delta_frame, cv2.COLOR_GRAY2BGR)
     thresh_bgr = cv2.cvtColor(thresh_frame, cv2.COLOR_GRAY2BGR)
@@ -81,19 +92,24 @@ while True:
 
     key = cv2.waitKey(1)
     if key == ord('q'):
-        # If we are in the middle of a motion event when quitting, log the end time
         if status == 1:
             times.append(datetime.now())
         break
 
 # --- POST-LOOP ANALYSIS & REPORT ---
+# (This section remains the same)
 print("Generating motion report...")
-
-# Store the start and end times in the DataFrame
 for i in range(0, len(times), 2):
     if i + 1 < len(times):
         df = pd.concat([df, pd.DataFrame({"Start": [times[i]], "End": [times[i+1]]})], ignore_index=True)
 
-# Save the report to a CSV file
 if not df.empty:
     df.to_csv("Motion_Log.csv")
+    print("Motion log saved to Motion_Log.csv")
+    print(df)
+else:
+    print("No motion events were recorded.")
+
+# --- CLEANUP ---
+video.release()
+cv2.destroyAllWindows()
