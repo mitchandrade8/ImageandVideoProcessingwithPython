@@ -1,4 +1,4 @@
-import cv2, time
+import cv2, time, pandas
 from datetime import datetime
 
 first_frame = None
